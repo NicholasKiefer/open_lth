@@ -4,12 +4,16 @@
 # LICENSE file in the root directory of this source tree.
 
 import torch
+from models.layers.bnns import BayesianBatchNorm2d
 
 
 def uniform(w):
     if isinstance(w, torch.nn.BatchNorm2d):
         w.weight.data = torch.rand(w.weight.data.shape)
         w.bias.data = torch.zeros_like(w.bias.data)
+
+    elif isinstance(w, BayesianBatchNorm2d):
+        pass
 
 
 def fixed(w):

@@ -27,6 +27,13 @@ def get_optimizer(training_hparams: TrainingHparams, model: Model) -> torch.opti
             lr=training_hparams.lr,
             weight_decay=training_hparams.weight_decay or 0
         )
+    
+    elif training_hparams.optimizer_name == "adamw":
+        return torch.optim.AdamW(
+            model.parameters(),
+            lr=training_hparams.lr,
+            weight_decay=training_hparams.weight_decay or 0
+        )
 
     raise ValueError('No such optimizer: {}'.format(training_hparams.optimizer_name))
 
@@ -48,4 +55,4 @@ def get_lr_schedule(training_hparams: TrainingHparams, optimizer: torch.optim.Op
         lambdas.append(lambda it: min(1.0, it / warmup_iters))
 
     # Combine the lambdas.
-    return torch.optim.lr_scheduler.LambdaLR(optimizer, lambda it: np.product([l(it) for l in lambdas]))
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, lambda it: np.prod([l(it) for l in lambdas]))
