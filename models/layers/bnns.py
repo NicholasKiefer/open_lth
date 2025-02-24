@@ -16,8 +16,8 @@ class BayesianLinear(torch.nn.Module):
         sigma_bias = torch.log1p(torch.exp(self.rho_bias))
         
         # Sample weights and bias using reparameterization trick
-        epsilon_w = torch.randn_like(sigma)
-        epsilon_b = torch.randn_like(sigma_bias)
+        epsilon_w = torch.randn_like(sigma, device=sigma.device)
+        epsilon_b = torch.randn_like(sigma_bias, device=sigma_bias.device)
         
         weights = self.mu + sigma * epsilon_w
         bias = self.mu_bias + sigma_bias * epsilon_b
@@ -26,8 +26,9 @@ class BayesianLinear(torch.nn.Module):
     
 
 class BayesianConv2d(torch.nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0):
+    def __init__(self, in_channels, out_channels, kernel_size, stride=1, padding=0, bias=False):
         super().__init__()
+        assert bias == False
         
         self.kernel_size = kernel_size if isinstance(kernel_size, tuple) else (kernel_size, kernel_size)
         self.stride = stride if isinstance(stride, tuple) else (stride, stride)
@@ -46,8 +47,8 @@ class BayesianConv2d(torch.nn.Module):
         sigma_bias = torch.log1p(torch.exp(self.rho_bias))
         
         # Sample weights and bias using reparameterization trick
-        epsilon_w = torch.randn_like(sigma)
-        epsilon_b = torch.randn_like(sigma_bias)
+        epsilon_w = torch.randn_like(sigma, device=sigma.device)
+        epsilon_b = torch.randn_like(sigma_bias, device=sigma_bias.device)
         
         weights = self.mu + sigma * epsilon_w
         bias = self.mu_bias + sigma_bias * epsilon_b
@@ -79,14 +80,14 @@ class BayesianBatchNorm2d(torch.nn.Module):
             self.running_mean = (1 - self.momentum) * self.running_mean + self.momentum * mean.squeeze()
             self.running_var = (1 - self.momentum) * self.running_var + self.momentum * var.squeeze()
         else:
-            mean = self.running_mean.view(1, -1, 1, 1)
-            var = self.running_var.view(1, -1, 1, 1)
+            mean = self.running_mean.view(1, -1, 1, 1).to(x.device)
+            var = self.running_var.view(1, -1, 1, 1).to(x.device)
         
         sigma_gamma = torch.log1p(torch.exp(self.rho_gamma))
         sigma_beta = torch.log1p(torch.exp(self.rho_beta))
         
-        epsilon_gamma = torch.randn_like(sigma_gamma)
-        epsilon_beta = torch.randn_like(sigma_beta)
+        epsilon_gamma = torch.randn_like(sigma_gamma, device=sigma_gamma.device)
+        epsilon_beta = torch.randn_like(sigma_beta, device=sigma_beta.device)
         
         gamma = self.mu_gamma + sigma_gamma * epsilon_gamma
         beta = self.mu_beta + sigma_beta * epsilon_beta

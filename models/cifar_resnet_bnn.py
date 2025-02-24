@@ -20,15 +20,18 @@ class Model(base.Model):
 
             stride = 2 if downsample else 1
             self.conv1 = BayesianConv2d(f_in, f_out, kernel_size=3, stride=stride, padding=1, bias=False)
-            self.bn1 = BayesianBatchNorm2d(f_out)
+            # self.bn1 = BayesianBatchNorm2d(f_out)
+            self.bn1 = nn.BatchNorm2d(f_out)
             self.conv2 = BayesianConv2d(f_out, f_out, kernel_size=3, stride=1, padding=1, bias=False)
-            self.bn2 = BayesianBatchNorm2d(f_out)
+            # self.bn2 = BayesianBatchNorm2d(f_out)
+            self.bn2 = nn.BatchNorm2d(f_out)
 
             # No parameters for shortcut connections.
             if downsample or f_in != f_out:
                 self.shortcut = nn.Sequential(
                     BayesianConv2d(f_in, f_out, kernel_size=1, stride=2, bias=False),
-                    BayesianBatchNorm2d(f_out)
+                    # BayesianBatchNorm2d(f_out)
+                    nn.BatchNorm2d(f_out)
                 )
             else:
                 self.shortcut = nn.Sequential()
@@ -46,7 +49,8 @@ class Model(base.Model):
         # Initial convolution.
         current_filters = plan[0][0]
         self.conv = BayesianConv2d(3, current_filters, kernel_size=3, stride=1, padding=1, bias=False)
-        self.bn = BayesianBatchNorm2d(current_filters)
+        # self.bn = BayesianBatchNorm2d(current_filters)
+        self.bn = nn.BatchNorm2d(current_filters)
 
         # The subsequent blocks of the ResNet.
         blocks = []
@@ -77,15 +81,28 @@ class Model(base.Model):
 
     @property
     def output_layer_names(self):
-        return ['fc.weight', 'fc.bias']
+        # return ['fc.weight', 'fc.bias']
+        return ["fc.mu", "fc.mu_bias", "fc.rho", "fc.rho_bias"]
+    
+    @property
+    def prunable_layer_names(self):
+        names = []
+        for layer in self.named_modules():
+            if isinstance(layer, BayesianConv2d, BayesianLinear):
+                names.append(layer)
+        return names
 
     @staticmethod
     def is_valid_model_name(model_name):
-        return (model_name.startswith('cifar_resnet_') and
-                5 > len(model_name.split('_')) > 2 and
-                all([x.isdigit() and int(x) > 0 for x in model_name.split('_')[2:]]) and
-                (int(model_name.split('_')[2]) - 2) % 6 == 0 and
-                int(model_name.split('_')[2]) > 2)
+        valid = model_name.endswith("bnn")
+        if not valid: return False;
+        model_name = model_name[:-4]
+        valid = valid and (model_name.startswith('cifar_resnet_') and 
+                           5 > len(model_name.split('_')) > 2 and
+                           all([x.isdigit() and int(x) > 0 for x in model_name.split('_')[2:]]) and
+                           (int(model_name.split('_')[2]) - 2) % 6 == 0 and
+                           int(model_name.split('_')[2]) > 2)
+        return valid
 
     @staticmethod
     def get_model_from_name(model_name, initializer,  outputs=10):
@@ -109,6 +126,7 @@ class Model(base.Model):
 
         if not Model.is_valid_model_name(model_name):
             raise ValueError('Invalid model name: {}'.format(model_name))
+        model_name = model_name[:-4]
 
         name = model_name.split('_')
         W = 16 if len(name) == 3 else int(name[3])
@@ -127,7 +145,7 @@ class Model(base.Model):
     @staticmethod
     def default_hparams():
         model_hparams = hparams.ModelHparams(
-            model_name='cifar_resnet_20',
+            model_name='cifar_resnet_20_bnn',
             model_init='kaiming_normal',
             batchnorm_init='uniform',
         )

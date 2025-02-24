@@ -19,11 +19,7 @@ from training import optimizers
 from training import standard_callbacks
 from training.metric_logger import MetricLogger
 
-try:
-    import apex
-    NO_APEX = False
-except ImportError:
-    NO_APEX = True
+NO_APEX = True
 
 
 def train(
@@ -68,7 +64,7 @@ def train(
     # Adapt for FP16.
     if training_hparams.apex_fp16:
         if NO_APEX: raise ImportError('Must install nvidia apex to use this model.')
-        model, step_optimizer = apex.amp.initialize(model, optimizer, loss_scale='dynamic', verbosity=0)
+        # model, step_optimizer = apex.amp.initialize(model, optimizer, loss_scale='dynamic', verbosity=0)
 
     # Handle parallelism if applicable.
     if get_platform().is_distributed:
@@ -117,8 +113,7 @@ def train(
             model.train()
             loss = model.loss_criterion(model(examples), labels)
             if training_hparams.apex_fp16:
-                with apex.amp.scale_loss(loss, optimizer) as scaled_loss:
-                    scaled_loss.backward()
+                raise NotImplementedError
             else:
                 loss.backward()
 

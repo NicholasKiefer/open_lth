@@ -5,7 +5,7 @@ def kl_div(bnn_model):
     
     # Compute KL divergence between posterior (q) and prior (p)
     kl_divergence = 0
-    for layer in bnn_model:
+    for layer in bnn_model.named_modules():
         if isinstance(layer, (BayesianLinear, BayesianConv2d)):
             q_dist = torch.distributions.Normal(layer.mu, torch.log1p(torch.exp(layer.rho)))  # Variational posterior
             p_dist = torch.distributions.Normal(torch.zeros_like(layer.mu), torch.ones_like(layer.mu))  # Standard normal prior
