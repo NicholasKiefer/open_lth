@@ -125,6 +125,7 @@ def standard_callbacks(training_hparams: hparams.TrainingHparams, train_set_load
         run_at_step(end, save_model),
         run_at_step(end, save_logger),
         run_every_epoch(checkpointing.save_checkpoint_callback),
+        # run_every_epoch(save_model),
     ]
 
     # Test every epoch if requested.

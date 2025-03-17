@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import torch
-
+from torch_bayesian.vi import VILinear, VIConv2d
 
 def binary(w):
     if isinstance(w, torch.nn.Linear) or isinstance(w, torch.nn.Conv2d):
@@ -26,3 +26,11 @@ def kaiming_uniform(w):
 def orthogonal(w):
     if isinstance(w, torch.nn.Linear) or isinstance(w, torch.nn.Conv2d):
         torch.nn.init.orthogonal_(w.weight)
+
+def dirac(w):
+    if isinstance(w, (torch.nn.Linear, torch.nn.Conv2d)):
+        torch.nn.init.dirac_(w.weight)
+
+def vi(w):
+    if isinstance(w, (VILinear, VIConv2d)):
+        w.reset_parameters()

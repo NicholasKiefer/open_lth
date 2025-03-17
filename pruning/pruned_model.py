@@ -20,21 +20,31 @@ class PrunedModel(Model):
         self.model = model
 
         for k in self.model.prunable_layer_names:
-            if k not in mask: raise ValueError('Missing mask value {}.'.format(k))
-            if not np.array_equal(mask[k].shape, np.array(self.model.state_dict()[k].shape)):
+            if k not in mask:
+                raise ValueError('Missing mask value {}.'.format(k))
+
+            kname = k
+            if hasattr(model, "is_vi_model"):
+                kname = k + "_mean"
+            weight_k = self.model.state_dict()[kname]
+            if not np.array_equal(mask[k].shape, np.array(weight_k.shape)):
                 raise ValueError('Incorrect mask shape {} for tensor {}.'.format(mask[k].shape, k))
 
         for k in mask:
             if k not in self.model.prunable_layer_names:
                 raise ValueError('Key {} found in mask but is not a valid model tensor.'.format(k))
 
-        for k, v in mask.items(): self.register_buffer(PrunedModel.to_mask_name(k), v.float())
+        for k, v in mask.items():
+            gen_name = PrunedModel.to_mask_name(k)
+            self.register_buffer(gen_name, v.float())
         self._apply_mask()
 
+    # todo: Vi models behave differently here
     def _apply_mask(self):
         for name, param in self.model.named_parameters():
-            if hasattr(self, PrunedModel.to_mask_name(name)):
-                param.data *= getattr(self, PrunedModel.to_mask_name(name))
+            gen_name = PrunedModel.to_mask_name(name).removesuffix("_mean").removesuffix("_log_std")
+            if hasattr(self, gen_name):
+                param.data *= getattr(self, gen_name)
 
     def forward(self, x):
         self._apply_mask()

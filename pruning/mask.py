@@ -10,6 +10,8 @@ import torch
 from foundations import paths
 from platforms.platform import get_platform
 
+from torch_bayesian.vi import VIModule
+
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from models import base
@@ -33,11 +35,15 @@ class Mask(dict):
 
         super(Mask, self).__setitem__(key, value)
 
+    # todo: ones based on mean only for VIModel
     @staticmethod
     def ones_like(model: 'base.Model') -> 'Mask':
         mask = Mask()
+        is_vi_model = hasattr(model, "is_vi_model")
         for name in model.prunable_layer_names:
-            mask[name] = torch.ones(list(model.state_dict()[name].shape))
+            if is_vi_model:  # for now assume VIModels contain just VIModules
+                statename = name + "_mean"
+            mask[name] = torch.ones(list(model.state_dict()[statename].shape))
         return mask
 
     def save(self, output_location):
