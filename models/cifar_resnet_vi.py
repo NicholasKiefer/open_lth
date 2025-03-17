@@ -5,12 +5,15 @@ from foundations import hparams
 from lottery.desc import LotteryDesc
 from models import base
 from pruning import sparse_global
+from functools import partial
 from torch_bayesian.vi import VILinear, VIConv2d, VISequential, VIResidualConnection, VIModule, KullbackLeiblerLoss
 from torch_bayesian.vi.predictive_distributions import CategoricalPredictiveDistribution
 
 class Model(base.Model):
     """A residual neural network as originally designed for CIFAR-10."""
     is_vi_model = True
+    dataset_size_train = 50000  # size of cifar
+    dataset_size_test = 10000  # size of cifar
     class Block(VIModule):
         """A ResNet block."""
 
@@ -75,8 +78,7 @@ class Model(base.Model):
         # kl_loss = 1 / len(loader) * kl_div(model) * 4e-3
         self.kl_loss_scale = kl_loss_scale
         pred_distr = CategoricalPredictiveDistribution()
-        dataset_size = 10000  # size of cifar
-        self.criterion = KullbackLeiblerLoss(pred_distr, dataset_size,)
+        self.criterion = KullbackLeiblerLoss(pred_distr, self.dataset_size_train, track=True)
 
         # bunch everything together for VI stuff
         self.vi = VISequential(*mods)
@@ -151,7 +153,9 @@ class Model(base.Model):
 
     @property
     def loss_criterion(self):
-        return self.criterion
+        if not self.training:
+            return partial(self.criterion, dataset_size=self.dataset_size_test)
+        return partial(self.criterion, dataset_size=self.dataset_size_train)
 
     @staticmethod
     def default_hparams():

@@ -5,6 +5,7 @@
 
 import time
 import torch
+import numpy as np
 
 from datasets.base import DataLoader
 from foundations import hparams
@@ -76,6 +77,12 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
             logger.add('{}_loss'.format(eval_name), step, total_loss / example_count)
             logger.add('{}_accuracy'.format(eval_name), step, total_correct / example_count)
             logger.add('{}_examples'.format(eval_name), step, example_count)
+            if hasattr(model, "is_vi_model") and model.criterion.track:
+                crit_log = model.criterion.log
+                # flush current saved and reset
+                logger.add(f'{eval_name}_df', step, np.average(crit_log["data_fitting"]))
+                logger.add(f'{eval_name}_pm', step, np.average(crit_log["prior_matching"]))
+                model.criterion._init_log()
 
             if verbose:
                 nonlocal time_of_last_call
