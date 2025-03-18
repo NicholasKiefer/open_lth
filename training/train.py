@@ -72,6 +72,7 @@ def train(
     elif get_platform().is_parallel:
         model = DataParallel(model)
 
+    None if not hasattr(model.model.vi, "return_log_probs") else model.model.vi.return_log_probs()
     # Get the random seed for the data order.
     data_order_seed = training_hparams.data_order_seed
 

@@ -4,7 +4,8 @@ import torch.nn.functional as F
 from foundations import hparams
 from lottery.desc import LotteryDesc
 from models import base
-from pruning import sparse_global
+from pruning import sparse_vi
+from pruning import sparse_global, sparse_vi
 from functools import partial
 from torch_bayesian.vi import VILinear, VIConv2d, VISequential, VIResidualConnection, VIModule, KullbackLeiblerLoss
 from torch_bayesian.vi.predictive_distributions import CategoricalPredictiveDistribution
@@ -180,8 +181,8 @@ class Model(base.Model):
             training_steps='160ep',
         )
 
-        pruning_hparams = sparse_global.PruningHparams(
-            pruning_strategy='sparse_bnn',
+        pruning_hparams = sparse_vi.PruningHparams(
+            pruning_strategy='sparse_vi',
             pruning_fraction=0.2
         )
 

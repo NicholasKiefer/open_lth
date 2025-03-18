@@ -61,6 +61,8 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
                 labels_size = torch.tensor(len(labels), device=get_platform().torch_device)
                 example_count += labels_size
                 total_loss += model.loss_criterion(output, labels) * labels_size
+                if model.model.is_vi_model:
+                    output = model.model.criterion.predictive_distribution.predictive_parameters_from_samples(output[0])
                 total_correct += correct(labels, output)
 
         # Share the information if distributed.
@@ -77,12 +79,12 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
             logger.add('{}_loss'.format(eval_name), step, total_loss / example_count)
             logger.add('{}_accuracy'.format(eval_name), step, total_correct / example_count)
             logger.add('{}_examples'.format(eval_name), step, example_count)
-            if hasattr(model, "is_vi_model") and model.criterion.track:
-                crit_log = model.criterion.log
+            if hasattr(model.model, "is_vi_model") and model.model.criterion.track:
+                crit_log = model.model.criterion.log
                 # flush current saved and reset
                 logger.add(f'{eval_name}_df', step, np.average(crit_log["data_fitting"]))
                 logger.add(f'{eval_name}_pm', step, np.average(crit_log["prior_matching"]))
-                model.criterion._init_log()
+                model.model.criterion._init_log()
 
             if verbose:
                 nonlocal time_of_last_call
