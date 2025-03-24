@@ -8,7 +8,7 @@ from platforms import local
 
 registered_platforms = {}
 registered_platforms["local"] = local.Platform
-registered_platforms["haicore"] = local.haicore
+registered_platforms["haicore"] = local.Haicore
 
 
 def get(name):

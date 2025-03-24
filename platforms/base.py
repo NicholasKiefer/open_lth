@@ -100,7 +100,7 @@ class Platform(Hparams):
 
     @staticmethod
     def load_model(path, *args, **kwargs):
-        return torch.load(path, *args, **kwargs)
+        return torch.load(path, *args, weights_only=False, **kwargs)
 
     # Run jobs. Called by the command line interface.
 

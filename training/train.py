@@ -5,6 +5,7 @@
 
 import typing
 import warnings
+import torch
 
 from datasets.base import DataLoader
 import datasets.registry
@@ -55,8 +56,14 @@ def train(
     if not get_platform().exists(output_location) and get_platform().is_primary_process:
         get_platform().makedirs(output_location)
 
+    None if not hasattr(model.model, "vi") else model.model.vi.return_log_probs()
+    model = model.to(get_platform().torch_device)
+    # Handle parallelism if applicable.
+    if get_platform().is_distributed:
+        model = DistributedDataParallel(model, device_ids=[get_platform().rank])
+    elif get_platform().is_parallel:
+        model = DataParallel(model)
     # Get the optimizer and learning rate schedule.
-    model.to(get_platform().torch_device)
     optimizer = optimizers.get_optimizer(training_hparams, model)
     step_optimizer = optimizer
     lr_schedule = optimizers.get_lr_schedule(training_hparams, optimizer, train_loader.iterations_per_epoch)
@@ -66,13 +73,6 @@ def train(
         if NO_APEX: raise ImportError('Must install nvidia apex to use this model.')
         # model, step_optimizer = apex.amp.initialize(model, optimizer, loss_scale='dynamic', verbosity=0)
 
-    # Handle parallelism if applicable.
-    if get_platform().is_distributed:
-        model = DistributedDataParallel(model, device_ids=[get_platform().rank])
-    elif get_platform().is_parallel:
-        model = DataParallel(model)
-
-    None if not hasattr(model.model.vi, "return_log_probs") else model.model.vi.return_log_probs()
     # Get the random seed for the data order.
     data_order_seed = training_hparams.data_order_seed
 

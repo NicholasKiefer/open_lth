@@ -25,10 +25,26 @@ class Platform(base.Platform):
         raise NotImplementedError
 
 
-class haicore(Platform):
+class Haicore(Platform):
+    def __init__(self,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.num_workers = 4
+        self._initialize_distributed()
+
+    def _initialize_distributed(self):
+        """Initializes the distributed environment if applicable."""
+        if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:
+            torch.distributed.init_process_group(backend="nccl")
+            self._distributed = True
+            torch.cuda.set_device(self.rank)
+            print(f"initialized on rank {self.rank}")
+        else:
+            self._distributed = False
+            print("did not initialize distributed, RANK is not in os.environ")
+
     @property
     def device_str(self):
-        return 'cuda' if torch.cuda.is_available() else 'cpu'
+        return f'cuda:{self.rank}' if self.is_distributed else 'cuda' if torch.cuda.is_available() else 'cpu'
 
     @property
     def torch_device(self):
@@ -36,23 +52,24 @@ class haicore(Platform):
 
     @property
     def is_parallel(self):
-        return torch.cuda.is_available() and torch.cuda.device_count() > 1
+        return self.is_distributed  # DDP inherently means parallel execution
 
     @property
     def is_distributed(self):
-        return False
+        return self._distributed
 
     @property
     def rank(self):
-        return torch.distributed.get_rank()
+        return torch.distributed.get_rank() if self.is_distributed else 0
 
     @property
     def world_size(self):
-        return torch.cuda.device_count()
+        return torch.distributed.get_world_size() if self.is_distributed else 1
 
     @property
     def is_primary_process(self):
-        return not self.is_distributed or self.rank == 0
+        return self.rank == 0  # Rank 0 is the primary process
 
     def barrier(self):
-        pass
+        if self.is_distributed:
+            torch.distributed.barrier()
