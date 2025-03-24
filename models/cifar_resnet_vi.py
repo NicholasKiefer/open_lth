@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -79,7 +80,7 @@ class Model(base.Model):
         # kl_loss = 1 / len(loader) * kl_div(model) * 4e-3
         self.kl_loss_scale = kl_loss_scale
         pred_distr = CategoricalPredictiveDistribution()
-        self.criterion = KullbackLeiblerLoss(pred_distr, self.dataset_size_train, track=True)
+        self.criterion = KullbackLeiblerLoss(pred_distr, self.dataset_size_train, heat=1, track=True)
 
         # bunch everything together for VI stuff
         self.vi = VISequential(*mods)
@@ -89,10 +90,10 @@ class Model(base.Model):
 
 
     def forward(self, x):
-        # for mod in self.vi:
-            # print(x.shape)
-            # x, log_probs = mod(x)
         x, log_probs = self.vi(x)
+        if self.training:
+            if torch.any(torch.isnan(x)):
+                raise ValueError("rip")
         return x, log_probs
 
     @property

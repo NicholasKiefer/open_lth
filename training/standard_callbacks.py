@@ -12,6 +12,8 @@ from foundations import hparams
 from foundations.step import Step
 from platforms.platform import get_platform
 from training import checkpointing
+from pruning.pruned_model import PrunedModel
+from torch.nn.parallel import DataParallel, DistributedDataParallel
 
 
 # Standard callbacks.
@@ -48,7 +50,7 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
         total_correct = torch.tensor(0.0).to(get_platform().torch_device)
 
         def correct(labels, outputs):
-            return torch.sum(torch.eq(labels, output.argmax(dim=1)))
+            return torch.sum(torch.eq(labels, outputs.argmax(dim=1)))
 
         model.eval()
 
@@ -61,8 +63,11 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
                 labels_size = torch.tensor(len(labels), device=get_platform().torch_device)
                 example_count += labels_size
                 total_loss += model.loss_criterion(output, labels) * labels_size
-                if model.model.is_vi_model:
-                    output = model.model.criterion.predictive_distribution.predictive_parameters_from_samples(output[0])
+                if isinstance(model, (DataParallel, DistributedDataParallel)):
+                    if hasattr(model.module.model, "vi"):
+                        output = model.module.model.criterion.predictive_distribution.predictive_parameters_from_samples(output[0].permute(1, 0, 2))
+                elif hasattr(model.model, "vi"):
+                        output = model.model.criterion.predictive_distribution.predictive_parameters_from_samples(output[0].permute(1, 0, 2))
                 total_correct += correct(labels, output)
 
         # Share the information if distributed.
@@ -79,19 +84,23 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
             logger.add('{}_loss'.format(eval_name), step, total_loss / example_count)
             logger.add('{}_accuracy'.format(eval_name), step, total_correct / example_count)
             logger.add('{}_examples'.format(eval_name), step, example_count)
-            if hasattr(model.model, "is_vi_model") and model.model.criterion.track:
-                crit_log = model.model.criterion.log
+            inner_model = model.module if isinstance(model, (DataParallel, DistributedDataParallel)) else model
+            add_to_verbose = False
+            if hasattr(inner_model.model, "is_vi_model") and inner_model.model.criterion.track:
+                crit_log = inner_model.model.criterion.log
                 # flush current saved and reset
                 logger.add(f'{eval_name}_df', step, np.average(crit_log["data_fitting"]))
                 logger.add(f'{eval_name}_pm', step, np.average(crit_log["prior_matching"]))
-                model.model.criterion._init_log()
+                inner_model.model.criterion._init_log()
+                add_to_verbose = True
 
             if verbose:
                 nonlocal time_of_last_call
                 elapsed = 0 if time_of_last_call is None else time.time() - time_of_last_call
-                print('{}\tep {:03d}\tit {:03d}\tloss {:.3f}\tacc {:.2f}%\tex {:d}\ttime {:.2f}s'.format(
-                    eval_name, step.ep, step.it, total_loss/example_count, 100 * total_correct/example_count,
-                    int(example_count), elapsed))
+                verbose_log = f'{eval_name}\tep {step.ep:03d}\tit {step.it:03d}\tloss {total_loss/example_count:.3f}\tacc {100 * total_correct/example_count:.2f}%\tex {int(example_count):d}\ttime {elapsed:.2f}s\t'
+                if add_to_verbose:
+                      verbose_log += f"df {np.average(crit_log["data_fitting"]):.2f}\tpm {np.average(crit_log["prior_matching"]):.2f}"
+                print(verbose_log)
                 time_of_last_call = time.time()
 
     return eval_callback
@@ -134,7 +143,7 @@ def standard_callbacks(training_hparams: hparams.TrainingHparams, train_set_load
         run_at_step(end, save_model),
         run_at_step(end, save_logger),
         run_every_epoch(checkpointing.save_checkpoint_callback),
-        # run_every_epoch(save_model),
+        run_every_epoch(save_model),
     ]
 
     # Test every epoch if requested.
