@@ -89,17 +89,21 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
             if hasattr(inner_model.model, "is_vi_model") and inner_model.model.criterion.track:
                 crit_log = inner_model.model.criterion.log
                 # flush current saved and reset
-                logger.add(f'{eval_name}_df', step, np.average(crit_log["data_fitting"]))
-                logger.add(f'{eval_name}_pm', step, np.average(crit_log["prior_matching"]))
+                df = np.average(crit_log["data_fitting"])
+                pm = np.average(crit_log["prior_matching"])
+                logger.add(f'{eval_name}_df', step, df)
+                logger.add(f'{eval_name}_pm', step, pm)
                 inner_model.model.criterion._init_log()
                 add_to_verbose = True
 
             if verbose:
                 nonlocal time_of_last_call
                 elapsed = 0 if time_of_last_call is None else time.time() - time_of_last_call
-                verbose_log = f'{eval_name}\tep {step.ep:03d}\tit {step.it:03d}\tloss {total_loss/example_count:.3f}\tacc {100 * total_correct/example_count:.2f}%\tex {int(example_count):d}\ttime {elapsed:.2f}s\t'
+                verbose_log = '{}\tep {:03d}\tit {:03d}\tloss {:.3f}\tacc {:.2f}%\tex {:d}\ttime {:.2f}s'.format(
+                    eval_name, step.ep, step.it, total_loss/example_count, 100 * total_correct/example_count,
+                    int(example_count), elapsed)
                 if add_to_verbose:
-                      verbose_log += f"df {np.average(crit_log["data_fitting"]):.2f}\tpm {np.average(crit_log["prior_matching"]):.2f}"
+                      verbose_log += '\tdf {}\tpm {:}'.format(np.average(crit_log["data_fitting"]), np.average(crit_log["prior_matching"]))
                 print(verbose_log)
                 time_of_last_call = time.time()
 
