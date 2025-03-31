@@ -89,8 +89,8 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
             if hasattr(inner_model.model, "is_vi_model") and inner_model.model.criterion.track:
                 crit_log = inner_model.model.criterion.log
                 # flush current saved and reset
-                df = np.average(crit_log["data_fitting"])
-                pm = np.average(crit_log["prior_matching"])
+                df = np.average(crit_log[f"{eval_name}_data_fitting"])
+                pm = np.average(crit_log[f"{eval_name}_prior_matching"])
                 logger.add(f'{eval_name}_df', step, df)
                 logger.add(f'{eval_name}_pm', step, pm)
                 inner_model.model.criterion._init_log()
@@ -103,7 +103,7 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
                     eval_name, step.ep, step.it, total_loss/example_count, 100 * total_correct/example_count,
                     int(example_count), elapsed)
                 if add_to_verbose:
-                      verbose_log += '\tdf {}\tpm {:}'.format(np.average(crit_log["data_fitting"]), np.average(crit_log["prior_matching"]))
+                      verbose_log += '\tdf {}\tpm {:}'.format(df, pm)
                 print(verbose_log)
                 time_of_last_call = time.time()
 
@@ -148,6 +148,7 @@ def standard_callbacks(training_hparams: hparams.TrainingHparams, train_set_load
         run_at_step(end, save_logger),
         run_every_epoch(checkpointing.save_checkpoint_callback),
         run_every_epoch(save_model),
+        run_every_epoch(save_logger),
     ]
 
     # Test every epoch if requested.

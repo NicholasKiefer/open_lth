@@ -10,6 +10,8 @@ from pruning import sparse_global, sparse_vi
 from functools import partial
 from torch_bayesian.vi import VILinear, VIConv2d, VISequential, VIResidualConnection, VIModule, KullbackLeiblerLoss
 from torch_bayesian.vi.predictive_distributions import CategoricalPredictiveDistribution
+from torch_bayesian.vi.variational_distributions import MeanFieldNormalVarDist
+
 
 class Model(base.Model):
     """A residual neural network as originally designed for CIFAR-10."""
@@ -24,7 +26,8 @@ class Model(base.Model):
         mods = []
         # Initial convolution.
         current_filters = 16
-        mods.append(VIConv2d(3, current_filters, kernel_size=3, stride=1, padding=1, bias=False))
+        init = MeanFieldNormalVarDist(initial_std=0.05)
+        mods.append(VIConv2d(3, current_filters, kernel_size=3, stride=1, padding=1, bias=False, variational_distribution=init))
         mods.append(nn.BatchNorm2d(current_filters, track_running_stats=False))
         # mods.append(nn.BatchNorm2d(current_filters, ))
         # mods.append(nn.ReLU())
