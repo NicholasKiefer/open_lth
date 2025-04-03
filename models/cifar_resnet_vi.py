@@ -11,6 +11,7 @@ from functools import partial
 from torch_bayesian.vi import VILinear, VIConv2d, VISequential, VIResidualConnection, VIModule, KullbackLeiblerLoss
 from torch_bayesian.vi.predictive_distributions import CategoricalPredictiveDistribution
 from torch_bayesian.vi.variational_distributions import MeanFieldNormalVarDist
+from torch_bayesian.vi.priors import MeanFieldNormalPrior
 
 
 class Model(base.Model):
@@ -24,18 +25,20 @@ class Model(base.Model):
         def __init__(self, f_in: int, f_out: int, downsample=False):
             super(Model.Block, self).__init__()
             init = MeanFieldNormalVarDist(initial_std=0.05)
+            prior = MeanFieldNormalPrior(0, 1)
             stride = 2 if downsample else 1
-            self.conv1 = VIConv2d(f_in, f_out, kernel_size=3, stride=stride, padding=1, bias=False, variational_distribution=init)
+            self.prior = MeanFieldNormalPrior(0, 0.1)
+            self.conv1 = VIConv2d(f_in, f_out, kernel_size=3, stride=stride, padding=1, bias=False, variational_distribution=init, prior=prior)
             # self.bn1 = BayesianBatchNorm2d(f_out)
             self.bn1 = nn.BatchNorm2d(f_out, track_running_stats=False)
-            self.conv2 = VIConv2d(f_out, f_out, kernel_size=3, stride=1, padding=1, bias=False)
+            self.conv2 = VIConv2d(f_out, f_out, kernel_size=3, stride=1, padding=1, bias=False, variational_distribution=init, prior=prior)
             # self.bn2 = BayesianBatchNorm2d(f_out)
             self.bn2 = nn.BatchNorm2d(f_out, track_running_stats=False)
 
             # No parameters for shortcut connections.
             if downsample or f_in != f_out:
                 self.shortcut = VISequential(
-                    VIConv2d(f_in, f_out, kernel_size=1, stride=2, bias=False),
+                    VIConv2d(f_in, f_out, kernel_size=1, stride=2, bias=False, variational_distribution=init, prior=prior),
                     # BayesianBatchNorm2d(f_out)
                     nn.BatchNorm2d(f_out, track_running_stats=False)
                 )
@@ -56,10 +59,12 @@ class Model(base.Model):
         super(Model, self).__init__()
         outputs = outputs or 10
 
+        prior = MeanFieldNormalPrior(0, 1)
+        init = MeanFieldNormalVarDist(initial_std=0.05)
         mods = []
         # Initial convolution.
         current_filters = plan[0][0]
-        mods.append(VIConv2d(3, current_filters, kernel_size=3, stride=1, padding=1, bias=False))
+        mods.append(VIConv2d(3, current_filters, kernel_size=3, stride=1, padding=1, bias=False, variational_distribution=init, prior=prior))
         mods.append(nn.BatchNorm2d(current_filters, track_running_stats=False))
         mods.append(nn.ReLU())
 
@@ -82,7 +87,7 @@ class Model(base.Model):
         # kl_loss = 1 / len(loader) * kl_div(model) * 4e-3
         self.kl_loss_scale = kl_loss_scale
         pred_distr = CategoricalPredictiveDistribution()
-        self.criterion = KullbackLeiblerLoss(pred_distr, self.dataset_size_train, heat=1, track=True)
+        self.criterion = KullbackLeiblerLoss(pred_distr, self.dataset_size_train, heat=.1, track=True)
 
         # bunch everything together for VI stuff
         self.vi = VISequential(*mods)
