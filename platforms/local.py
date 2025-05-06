@@ -14,11 +14,11 @@ from platforms import base
 class Platform(base.Platform):
     @property
     def root(self):
-        return pathlib.Path("/hkfs/work/workspace_haic/scratch/vq6575-gen_param/open_lth/data/")
+        return pathlib.Path("/hkfs/work/workspace_haic/scratch/vq6575-openlth/open_lth/data/")
 
     @property
     def dataset_root(self):
-        return pathlib.Path("/hkfs/work/workspace_haic/scratch/vq6575-gen_param/open_lth/data/")
+        return pathlib.Path("/hkfs/work/workspace_haic/scratch/vq6575-openlth/open_lth/data/")
 
     @property
     def imagenet_root(self):

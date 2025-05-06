@@ -113,11 +113,13 @@ def train(
             step_optimizer.zero_grad()
             model.train()
             loss = model.loss_criterion(model(examples), labels)
+            # loss = model.loss_criterion(model(examples), labels, min(.1, float(step.iteration) / float(Step.from_str("50ep", train_loader.iterations_per_epoch).iteration)))
             if training_hparams.apex_fp16:
                 raise NotImplementedError
             else:
                 loss.backward()
 
+            # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.)
             # Step forward. Ignore extraneous warnings that the lr_schedule generates.
             step_optimizer.step()
             with warnings.catch_warnings():  # Filter unnecessary warning.

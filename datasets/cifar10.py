@@ -44,6 +44,8 @@ class Dataset(base.ImageDataset):
     @staticmethod
     def get_train_set(use_augmentation):
         augment = [torchvision.transforms.RandomHorizontalFlip(), torchvision.transforms.RandomCrop(32, 4)]
+        # augment = [torchvision.transforms.RandomHorizontalFlip(), torchvision.transforms.RandomCrop(32, 4), torchvision.transforms.RandomGrayscale(.2)]
+        # augment += [torchvision.transforms.AugMix()]
         train_set = CIFAR10(train=True, root=os.path.join(get_platform().dataset_root, 'cifar10'), download=True)
         return Dataset(train_set.data, np.array(train_set.targets), augment if use_augmentation else [])
 

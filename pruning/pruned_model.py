@@ -7,6 +7,7 @@ from models.base import Model
 from pruning.mask import Mask
 
 import numpy as np
+import torch
 
 
 class PrunedModel(Model):
@@ -43,8 +44,14 @@ class PrunedModel(Model):
     def _apply_mask(self):
         for name, param in self.model.named_parameters():
             gen_name = PrunedModel.to_mask_name(name).removesuffix("_mean").removesuffix("_log_std")
+              # log_std should be masked by -inf where mask is 0 with same mask as mean
             if hasattr(self, gen_name):
-                param.data *= getattr(self, gen_name)
+                mask = getattr(self, gen_name)
+                if "log_std" in name:
+                    # mask = torch.where(mask == 0, torch.inf, 1.0)
+                    param.data = torch.where(mask == 0, -torch.inf, param.data)
+                else:
+                    param.data *= mask
 
     def forward(self, x):
         self._apply_mask()

@@ -19,11 +19,13 @@ if TYPE_CHECKING:
 class PruningHparams(hparams.PruningHparams):
     pruning_fraction: float = 0.2
     pruning_layers_to_ignore: str = None
-
+    prune_by: str = "signal_to_noise"  # "signal_to_noise", "mu", "square_sum"
+    
     _name = 'Hyperparameters for Sparse Global BNN Pruning'
     _description = 'Hyperparameters that modify the way pruning occurs.'
     _pruning_fraction = 'The fraction of additional weights to prune from the network.'
     _layers_to_ignore = 'A comma-separated list of addititonal tensors that should not be pruned.'
+    _prune_by = 'The method to use for pruning. Options are "signal_to_noise", "mu", "square_sum".'
 
 
 class Strategy(base.Strategy):
@@ -55,7 +57,15 @@ class Strategy(base.Strategy):
         weights_combined = {}
         for name in weights.keys():
             if name.endswith("_mean"):
-                weights_combined[name.removesuffix("_mean")] = weights[name] / weights[name.removesuffix("_mean") + "_log_std"]
+                # compute scoring function
+                if pruning_hparams.prune_by == "signal_to_noise":
+                    weights_combined[name.removesuffix("_mean")] = weights[name] / (np.exp(weights[name.removesuffix("_mean") + "_log_std"]) ** 2 + 1e-6)  # pruned based on signal-to-noise ratio
+                elif pruning_hparams.prune_by == "mu":
+                    weights_combined[name.removesuffix("_mean")] = weights[name]  # prune based on only mu
+                elif pruning_hparams.prune_by == "square_sum":
+                    weights_combined[name.removesuffix("_mean")] = (weights[name] ** 2) + (weights[name.removesuffix("_mean") + "_log_std"] ** 2)  # prune based on square sum of sigma and mu
+                else:
+                    raise ValueError(f"Unknown pruning method: {pruning_hparams.prune_by}")
             elif name.endswith("_log_std"):
                 pass
             else:
@@ -70,5 +80,7 @@ class Strategy(base.Strategy):
         for k in current_mask:
             if k not in new_mask:
                 new_mask[k] = current_mask[k]
-
+        for k in new_mask:
+            if new_mask[k].sum() == 0.:
+                print(f'Mask {k} is only pruned weights.')
         return new_mask
