@@ -11,7 +11,7 @@ from functools import partial
 from torch_bayesian.vi import VILinear, VIConv2d, VISequential, VIResidualConnection, VIModule, KullbackLeiblerLoss
 from torch_bayesian.vi.predictive_distributions import CategoricalPredictiveDistribution
 from torch_bayesian.vi.variational_distributions import MeanFieldNormalVarDist
-from torch_bayesian.vi.priors import MeanFieldNormalPrior
+from torch_bayesian.vi.priors import MeanFieldNormalPrior, GaussianMixturePrior
 
 
 class Model(base.Model):
@@ -24,10 +24,10 @@ class Model(base.Model):
 
         def __init__(self, f_in: int, f_out: int, downsample=False):
             super(Model.Block, self).__init__()
-            init = MeanFieldNormalVarDist(initial_std=0.05)
+            init = MeanFieldNormalVarDist(initial_std=0.01)
             prior = MeanFieldNormalPrior(0, 1)
+            # prior = GaussianMixturePrior(0, 0.01, 0, 1, pi=0.5)
             stride = 2 if downsample else 1
-            self.prior = MeanFieldNormalPrior(0, 0.1)
             self.conv1 = VIConv2d(f_in, f_out, kernel_size=3, stride=stride, padding=1, bias=False, variational_distribution=init, prior=prior)
             # self.bn1 = BayesianBatchNorm2d(f_out)
             self.bn1 = nn.BatchNorm2d(f_out, track_running_stats=False)
@@ -60,7 +60,8 @@ class Model(base.Model):
         outputs = outputs or 10
 
         prior = MeanFieldNormalPrior(0, 1)
-        init = MeanFieldNormalVarDist(initial_std=0.05)
+        # prior = GaussianMixturePrior(0, 0.01, 0, 1, pi=0.5)
+        init = MeanFieldNormalVarDist(initial_std=0.01)
         mods = []
         # Initial convolution.
         current_filters = plan[0][0]
@@ -191,7 +192,8 @@ class Model(base.Model):
 
         pruning_hparams = sparse_vi.PruningHparams(
             pruning_strategy='sparse_vi',
-            pruning_fraction=0.2
+            pruning_fraction=0.2,
+            prune_by='signal_to_noise',
         )
 
         return LotteryDesc(model_hparams, dataset_hparams, training_hparams, pruning_hparams)
