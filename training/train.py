@@ -56,13 +56,35 @@ def train(
     if not get_platform().exists(output_location) and get_platform().is_primary_process:
         get_platform().makedirs(output_location)
 
-    None if not hasattr(model.model, "vi") else model.model.vi.return_log_probs()
+    None if not hasattr(model.model, "is_vi_model") else model.model.return_log_probs()
     model = model.to(get_platform().torch_device)
     # Handle parallelism if applicable.
     if get_platform().is_distributed:
         model = DistributedDataParallel(model, device_ids=[get_platform().rank])
     elif get_platform().is_parallel:
         model = DataParallel(model)
+    # # check and register hooks for all modules in model.vi, but only on rank 0
+    # masks = {}
+    # obj_list = [None]
+    # if get_platform().is_primary_process:
+    #     for name, module in model.module.model.vi.named_modules():
+    #         if hasattr(module, "register_hooks"):
+    #             mask = module.register_hooks()
+    #             masks[name] = mask
+    #     obj_list = [masks]
+    # dist.broadcast_object_list(obj_list, src=0)
+    # masks = obj_list[0]
+    # if not get_platform().is_primary_process:
+    #     for name, module in model.module.model.vi.named_modules():
+    #         if hasattr(module, "register_hooks"):
+    #             module.register_hooks(masks[name])
+    # dist.barrier()
+    
+    # for name, param in model.module.model.named_parameters():
+    #     if not param._backward_hooks:
+    #         if get_platform().is_primary_process:
+    #             print(f"[Warning] No hooks on: {name}")
+    
     # Get the optimizer and learning rate schedule.
     optimizer = optimizers.get_optimizer(training_hparams, model)
     step_optimizer = optimizer

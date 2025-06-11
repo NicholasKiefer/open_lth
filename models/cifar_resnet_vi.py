@@ -11,7 +11,7 @@ from functools import partial
 from torch_bayesian.vi import VILinear, VIConv2d, VISequential, VIResidualConnection, VIModule, KullbackLeiblerLoss
 from torch_bayesian.vi.predictive_distributions import CategoricalPredictiveDistribution
 from torch_bayesian.vi.variational_distributions import MeanFieldNormalVarDist
-from torch_bayesian.vi.priors import MeanFieldNormalPrior, GaussianMixturePrior
+from torch_bayesian.vi.priors import MeanFieldNormalPrior
 
 
 class Model(base.Model):
@@ -19,8 +19,10 @@ class Model(base.Model):
     is_vi_model = True
     dataset_size_train = 50000  # size of cifar
     dataset_size_test = 10000  # size of cifar
+    freeze_weight_nr = None
     class Block(VIModule):
         """A ResNet block."""
+        freeze_weight_nr = None
 
         def __init__(self, f_in: int, f_out: int, downsample=False):
             super(Model.Block, self).__init__()
@@ -96,13 +98,15 @@ class Model(base.Model):
         # Initialize.
         self.apply(initializer)
 
-
     def forward(self, x):
         x, log_probs = self.vi(x)
         if self.training:
             if torch.any(torch.isnan(x)):
                 raise ValueError("rip")
         return x, log_probs
+
+    def return_log_probs(self):
+        self.vi.return_log_probs()
 
     @property
     def output_layer_names(self):

@@ -28,10 +28,10 @@ class Branch(base.Branch):
         # Randomize evenly across all layers.
         elif strategy == 'even':
             sparsity = mask.sparsity
-            for i, k in sorted(mask.keys()):
-                layer_mask = torch.where(torch.arange(mask[k].size) < torch.ceil(sparsity * mask[k].size),
-                                         torch.ones_like(mask[k].size), torch.zeros_like(mask[k].size))
-                mask[k] = shuffle_tensor(layer_mask, seed=seed+i).reshape(mask[k].size)
+            for i, k in enumerate(sorted(mask.keys())):
+                layer_mask = torch.where(torch.arange(mask[k].numel()) < torch.ceil((1 - sparsity) * mask[k].numel()),
+                                         torch.ones_like(mask[k].flatten()), torch.zeros_like(mask[k].flatten()))
+                mask[k] = shuffle_tensor(layer_mask, seed=seed+i).reshape(mask[k].size())
 
         # Identity.
         elif strategy == 'identity': pass
@@ -59,8 +59,8 @@ class Branch(base.Branch):
         else:
             raise ValueError(f'Invalid starting point {start_at}')
 
-        # Train the model with the new mask.
-        model = PrunedModel(models.registry.load(self.level_root, state_step, self.lottery_desc.model_hparams), mask)
+        # Train the model with the new mask. but load level 0 root instead of level root
+        model = PrunedModel(models.registry.load(self.lottery_desc.run_path(self.replicate, 0), state_step, self.lottery_desc.model_hparams), mask)
         train.standard_train(model, self.branch_root, self.lottery_desc.dataset_hparams,
                              self.lottery_desc.training_hparams, start_step=start_step, verbose=self.verbose)
 

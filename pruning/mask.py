@@ -41,6 +41,7 @@ class Mask(dict):
         mask = Mask()
         is_vi_model = hasattr(model, "is_vi_model")
         for name in model.prunable_layer_names:
+            statename = name
             if is_vi_model:  # for now assume VIModels contain just VIModules
                 statename = name + "_mean"
             mask[name] = torch.ones(list(model.state_dict()[statename].shape))

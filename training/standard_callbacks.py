@@ -65,9 +65,9 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
                 total_loss += model.loss_criterion(output, labels) * labels_size
                 # total_loss += model.loss_criterion(output, labels, min(0.1, float(step.iteration) / float(Step.from_str("50ep", loader.iterations_per_epoch).iteration))) * labels_size
                 if isinstance(model, (DataParallel, DistributedDataParallel)):
-                    if hasattr(model.module.model, "vi"):
+                    if hasattr(model.module.model, "is_vi_model"):
                         output = model.module.model.criterion.predictive_distribution.predictive_parameters_from_samples(output[0].permute(1, 0, 2))
-                elif hasattr(model.model, "vi"):
+                elif hasattr(model.model, "is_vi_model"):
                         output = model.model.criterion.predictive_distribution.predictive_parameters_from_samples(output[0].permute(1, 0, 2))
                 total_correct += correct(labels, output)
 
@@ -148,7 +148,7 @@ def standard_callbacks(training_hparams: hparams.TrainingHparams, train_set_load
         run_at_step(end, save_model),
         run_at_step(end, save_logger),
         run_every_epoch(checkpointing.save_checkpoint_callback),
-        run_every_epoch(save_model),
+        # run_every_epoch(save_model),
         run_every_epoch(save_logger),
     ]
 
