@@ -5,8 +5,6 @@
 
 import torch.nn as nn
 import torch.nn.functional as F
-import timm
-from timm.models.deit import _create_deit
 
 from foundations import hparams
 from lottery.desc import LotteryDesc
@@ -116,7 +114,7 @@ class SimpleViT(nn.Module):
         self.transformer = Transformer(dim, depth, heads, dim_head, mlp_dim)
 
         self.pool = "mean"
-        self.to_latent = nn.Identity()
+        # self.to_latent = nn.Identity()
 
         self.linear_head = nn.Linear(dim, num_classes)
 
@@ -129,7 +127,7 @@ class SimpleViT(nn.Module):
         x = self.transformer(x)
         x = x.mean(dim = 1)
 
-        x = self.to_latent(x)
+        # x = self.to_latent(x)
         return self.linear_head(x)
 
 
@@ -142,7 +140,7 @@ class Model(base.Model):
 
         embed_dim = {"tiny": 192, "small": 384, "base": 768}[plan]
         # model_args = dict(patch_size=2, embed_dim=embed_dim, depth=12, num_heads=3, img_size=32, num_classes=outputs, global_pool="avg")
-        self.vit = SimpleViT(image_size=32, patch_size=2, num_classes=outputs, depth=12, heads=3, dim_head=embed_dim % 3, mlp_dim=4 * embed_dim)
+        self.vit = SimpleViT(dim=embed_dim, image_size=32, patch_size=4, num_classes=outputs, depth=6, heads=3, dim_head=embed_dim // 3, mlp_dim=4 * embed_dim)
         self.criterion = nn.CrossEntropyLoss()
 
         # Initialize.
@@ -197,6 +195,7 @@ class Model(base.Model):
             lr=0.001,
             weight_decay=1e-4,
             training_steps='160ep',
+            warmup_steps="80ep",
         )
 
         pruning_hparams = sparse_global.PruningHparams(

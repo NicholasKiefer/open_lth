@@ -41,13 +41,19 @@ def get_optimizer(training_hparams: TrainingHparams, model: Model) -> torch.opti
 def get_lr_schedule(training_hparams: TrainingHparams, optimizer: torch.optim.Optimizer, iterations_per_epoch: int):
     lambdas = [lambda it: 1.0]
 
-    # Drop the learning rate according to gamma at the specified milestones.
-    if bool(training_hparams.gamma) != bool(training_hparams.milestone_steps):
-        raise ValueError('milestones and gamma hyperparameters must both be set or not at all.')
-    if training_hparams.milestone_steps:
-        milestones = [Step.from_str(x, iterations_per_epoch).iteration
-                      for x in training_hparams.milestone_steps.split(',')]
-        lambdas.append(lambda it: training_hparams.gamma ** bisect.bisect(milestones, it))
+    # a cosine lr schedule
+    if training_hparams.milestone_steps == "cosine":
+        warmup_iters = Step.from_str(training_hparams.warmup_steps, iterations_per_epoch).iteration
+        total_iters = Step.from_str(training_hparams.training_steps, iterations_per_epoch).iteration
+        lambdas.append(lambda it: 1 if it<warmup_iters else np.cos( (it - warmup_iters) / (total_iters - warmup_iters) * np.pi / 2))
+    else:
+        # Drop the learning rate according to gamma at the specified milestones.
+        if bool(training_hparams.gamma) != bool(training_hparams.milestone_steps):
+            raise ValueError('milestones and gamma hyperparameters must both be set or not at all.')
+        if training_hparams.milestone_steps:
+            milestones = [Step.from_str(x, iterations_per_epoch).iteration
+                          for x in training_hparams.milestone_steps.split(',')]
+            lambdas.append(lambda it: training_hparams.gamma ** bisect.bisect(milestones, it))
 
     # Add linear learning rate warmup if specified.
     if training_hparams.warmup_steps:

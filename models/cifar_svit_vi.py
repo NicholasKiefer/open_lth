@@ -160,7 +160,7 @@ class Model(base.Model):
 
         embed_dim = {"tiny": 192, "small": 384, "base": 768}[plan]
         # model_args = dict(patch_size=2, embed_dim=embed_dim, depth=12, num_heads=3, img_size=32, num_classes=outputs, global_pool="avg")
-        self.vit = SimpleViT(dim=embed_dim, image_size=32, patch_size=2, num_classes=outputs, depth=12, heads=3, dim_head=embed_dim // 3, mlp_dim=4 * embed_dim)
+        self.vit = SimpleViT(dim=embed_dim, image_size=32, patch_size=4, num_classes=outputs, depth=6, heads=3, dim_head=embed_dim // 3, mlp_dim=4 * embed_dim)
         pred_distr = CategoricalPredictiveDistribution()
         self.criterion = KullbackLeiblerLoss(pred_distr, self.dataset_size_train, heat=.1, track=True)
 
@@ -189,7 +189,7 @@ class Model(base.Model):
 
     @staticmethod
     def is_valid_model_name(model_name):
-        return (model_name.startswith('cifar_svit_') and model_name.split("_")[2] in ["tiny", "small", "base"])
+        return (model_name.startswith('cifar_visvit_') and model_name.split("_")[2] in ["tiny", "small", "base"])
 
     @staticmethod
     def get_model_from_name(model_name, initializer,  outputs=10):
@@ -214,7 +214,7 @@ class Model(base.Model):
     @staticmethod
     def default_hparams():
         model_hparams = hparams.ModelHparams(
-            model_name='cifar_svit_tiny',
+            model_name='cifar_visvit_tiny',
             model_init='kaiming_normal',
             batchnorm_init='uniform',
         )
@@ -230,6 +230,7 @@ class Model(base.Model):
             lr=0.001,
             weight_decay=1e-4,
             training_steps='160ep',
+            warmup_steps="80ep",
         )
 
         pruning_hparams = sparse_vi.PruningHparams(
