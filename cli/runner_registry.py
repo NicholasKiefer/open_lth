@@ -7,8 +7,9 @@ from foundations.runner import Runner
 from lottery.branch.runner import BranchRunner
 from lottery.runner import LotteryRunner
 from training.runner import TrainingRunner
+from lottery.lr_runner import LRLotteryRunner
 
-registered_runners = {'train': TrainingRunner, 'lottery': LotteryRunner, 'lottery_branch': BranchRunner}
+registered_runners = {'train': TrainingRunner, 'lottery': LotteryRunner, 'lottery_branch': BranchRunner, 'lottery_lr': LRLotteryRunner}
 
 
 def get(runner_name: str) -> Runner:
