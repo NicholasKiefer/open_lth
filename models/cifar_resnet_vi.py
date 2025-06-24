@@ -110,14 +110,15 @@ class Model(base.Model):
 
     @property
     def output_layer_names(self):
-        return ['fc.weight', 'fc.bias']
+        name = list(reversed(list(self.vi._modules.items())))[0]
+        return [f'vi.{name}._weight', f'vi.{name}._bias']
     
     # return [name + '.weight' for name, module in self.named_modules()
     @property
     def prunable_layer_names(self):
         names = []
         for name, layer in self.named_modules():
-            if isinstance(layer, (VILinear, VIConv2d)):
+            if isinstance(layer, (VIConv2d)):
                 for w in layer.random_variables:
                     names.append(f"{name}._{w}")
         return names

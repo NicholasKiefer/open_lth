@@ -76,7 +76,7 @@ class Model(base.Model):
     def prunable_layer_names(self):
         names = []
         for name, layer in self.named_modules():
-            if isinstance(layer, (VILinear, VIConv2d)):
+            if isinstance(layer, (VIConv2d)):
                 for w in layer.random_variables:
                     names.append(f"{name}._{w}")
         return names
