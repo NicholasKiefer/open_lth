@@ -22,7 +22,7 @@ class Platform(base.Platform):
 
     @property
     def imagenet_root(self):
-        raise NotImplementedError
+        return pathlib.Path("/hkfs/home/dataset/datasets/imagenet-2012/original/imagenet-raw/ILSVRC/Data/CLS-LOC/")
 
 
 class Haicore(Platform):

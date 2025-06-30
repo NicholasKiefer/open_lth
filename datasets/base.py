@@ -195,7 +195,9 @@ class DataLoader(torch.utils.data.DataLoader):
 
         super(DataLoader, self).__init__(
             dataset, batch_size, sampler=self._sampler, num_workers=num_workers,
-            pin_memory=pin_memory and get_platform().torch_device.type == 'cuda')
+            pin_memory=pin_memory and get_platform().torch_device.type == 'cuda',
+            # collate_fn=lambda batch: torchvision.transforms.v2.MixUp(*torch.utils.data.default_collate(batch)),
+            )
 
     def shuffle(self, seed: int):
         self._sampler.shuffle_dataorder(seed)

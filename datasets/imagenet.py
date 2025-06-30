@@ -26,6 +26,7 @@ class Dataset(base.ImageDataset):
     def __init__(self, loc: str, image_transforms):
         # Load the data.
         classes = sorted(get_platform().listdir(loc))
+        classes = [i for i in classes if not i.endswith("JPEG")]
         samples = []
 
         if get_platform().num_workers > 0:
