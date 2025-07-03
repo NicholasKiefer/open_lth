@@ -6,6 +6,7 @@
 import typing
 import warnings
 import torch
+import sys
 
 from datasets.base import DataLoader
 import datasets.registry
@@ -89,6 +90,7 @@ def train(
     optimizer = optimizers.get_optimizer(training_hparams, model)
     step_optimizer = optimizer
     lr_schedule = optimizers.get_lr_schedule(training_hparams, optimizer, train_loader.iterations_per_epoch)
+    scaler = torch.GradScaler()
 
     # Adapt for FP16.
     if training_hparams.apex_fp16:
@@ -117,6 +119,7 @@ def train(
         train_loader.shuffle(None if data_order_seed is None else (data_order_seed + ep))
 
         for it, (examples, labels) in enumerate(train_loader):
+            if get_platform().is_primary_process: print(it, train_loader.iterations_per_epoch, file=sys.stderr)
 
             # Advance the data loader until the start epoch and iteration.
             if ep == start_step.ep and it < start_step.it: continue
@@ -134,16 +137,18 @@ def train(
 
             step_optimizer.zero_grad()
             model.train()
-            loss = model.loss_criterion(model(examples), labels)
+            with torch.autocast(device_type='cuda', dtype=torch.float16):
+                loss = model.loss_criterion(model(examples), labels)
             # loss = model.loss_criterion(model(examples), labels, min(.1, float(step.iteration) / float(Step.from_str("50ep", train_loader.iterations_per_epoch).iteration)))
             if training_hparams.apex_fp16:
                 raise NotImplementedError
             else:
-                loss.backward()
+                scaler.scale(loss).backward()
 
             # torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=5.)
             # Step forward. Ignore extraneous warnings that the lr_schedule generates.
-            step_optimizer.step()
+            scaler.step(step_optimizer)
+            scaler.update()
             with warnings.catch_warnings():  # Filter unnecessary warning.
                 warnings.filterwarnings("ignore", category=UserWarning)
                 lr_schedule.step()
