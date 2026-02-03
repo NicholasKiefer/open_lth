@@ -71,8 +71,8 @@ def get(model_hparams: ModelHparams, outputs=None):
     return model
 
 
-def load(save_location: str, save_step: Step, model_hparams: ModelHparams, outputs=None):
-    state_dict = get_platform().load_model(paths.model(save_location, save_step))
+def load(save_location: str, save_step: Step, model_hparams: ModelHparams, outputs=None, **kwargs):
+    state_dict = get_platform().load_model(paths.model(save_location, save_step), **kwargs)
     model = get(model_hparams, outputs)
     model.load_state_dict(state_dict)
     return model
